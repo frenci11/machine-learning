@@ -1,14 +1,27 @@
+
 import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.vgg16 import preprocess_input
-from tensorflow.keras.applications import VGG16
-from tensorflow.keras.models import Model
+from keras.preprocessing import image
+from keras.applications.vgg16 import preprocess_input
+from keras.applications import VGG16
+from keras.models import Model
 from collections import namedtuple
 from sklearn.decomposition import PCA
 import os
 
+
+import tensorflow as tf
+from keras.layers import Input, Dense
+from keras.callbacks import EarlyStopping
+from sklearn.model_selection import train_test_split
+
+from tensorflow.keras.backend import clear_session
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Input, Dense, LeakyReLU
+from tensorflow.keras.models import Model, load_model
+
+import colorsys
 #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Function to visualize features
@@ -34,7 +47,7 @@ def VGG16_features(img_path, model, layer_name,visualize):
     img = img.crop((left, top, right, bottom))
 
     #img = image.load_img(img_path, target_size=(224, 224))
-    img_data = image.img_to_array(img)
+    img_data = image.image_utils.img_to_array(img)
     img_data = np.expand_dims(img_data, axis=0)
     img_data = preprocess_input(img_data)
 
@@ -44,7 +57,6 @@ def VGG16_features(img_path, model, layer_name,visualize):
     
     #----------this section is for visualization purposes only--------------------
 
-    # Visualize the intermediate layer outputs
     if(visualize):
        
         plt.figure()
@@ -77,11 +89,11 @@ def VGG16_features(img_path, model, layer_name,visualize):
         plt.imshow(display_grid, aspect='auto', cmap='viridis')
         plt.savefig('conv1.png')
         plt.show()
-    #------------------------------------------------------------------------------
+     #----------this section is for visualization purposes only--------------------
 
     return intermediate_output.flatten()
 
-
+#-------------------------------------------------------------------------------------------------------------------
 
 def path_discovery(img_dir):
     """
@@ -105,13 +117,14 @@ def path_discovery(img_dir):
         dirs_visited.append(root)
         for filename in files:
             img_path= os.path.join(root,filename)
-            print(img_path)
+            #print(img_path)
             img_paths.append(img_path) 
             labels=np.append(labels,k)
         k=k+1
     
     return discovery_results(img_paths, dirs_visited, labels)
 
+#--------------------------------------------------------------------------------------------------------------------------------
 
 #pca component extraction mantaining 90% of test variance
 def pca_extraction(feature_list, variance_percentage):
@@ -139,3 +152,59 @@ def pca_extraction(feature_list, variance_percentage):
     pca = PCA(n_components=pca_components)
     pca_result = pca.fit_transform(feature_list)
     return results(pca,pca_result)
+
+#--------------------------------------------------------------------------------------------------------------------------------
+def input_preprocessing(img_paths):
+    
+    """
+    preprocess input image for autoencoder
+
+    Parameters:
+    - img_paths list
+
+    Returns results(pca,pca_result):
+        - feature_vector (list) flattened image vector
+        - original (list) list of original preprocessed images
+    """
+    results= namedtuple('results',['feature_vector', 'original_image'])
+    
+    if(type(img_paths)is not list):
+        raise TypeError("only string list allowed")
+   
+    feature_vector=[]
+    img = []
+    original=[]
+    print("input preprocessing...")
+    for img_path in img_paths:
+        img = Image.open(img_path).convert('RGB')
+        width, height = img.size
+        
+        if width <= height:
+            scale_factor = 224 / width
+        else:
+            scale_factor = 224 / height
+            
+        new_width = int(width * scale_factor)+1
+        new_height = int(height * scale_factor)+1
+        img = img.resize((new_width, new_height))
+        
+        left = (new_width - 224) // 2
+        top = (new_height - 224) // 2
+        right = left + 224
+        bottom = top + 224
+        img = img.crop((left, top, right, bottom))
+        
+        img = np.array(img)/255.0
+        
+        hls = np.apply_along_axis(lambda x: colorsys.rgb_to_hls(x[0], x[1], x[2]), 2, img)
+        hue = hls[:, :, 0]  # Extract the Hue channel
+
+        original.append(hue)
+        #img=np.array(hue)
+
+        img_array =hue.flatten()
+        feature_vector.append(img_array)
+    print("preprocessing done")
+    return results(feature_vector,original)
+
+#---------------------------------------------------------------------------------------------------------------------
