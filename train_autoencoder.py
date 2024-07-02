@@ -21,7 +21,7 @@ def autoencoder_network(path_input):
     #input preprocessing
     res=input_preprocessing(path_input)  
     feature_vector= np.array(res.feature_vector)
-    #feature_vector=feature_vector/255
+    feature_vector=feature_vector/255
     print(f"Shape of feature_vectors: {feature_vector.shape}")
     
     x_train, x_val = train_test_split(feature_vector, test_size=0.2, random_state=1)
@@ -34,38 +34,39 @@ def autoencoder_network(path_input):
     
     input_img = Input(shape=(input_dim,))
     #encoder side
-    encoded = Dense(2048)(input_img) 
-    encoded = LeakyReLU(alpha=0.01)(encoded)
-    encoded = Dense(1024)(encoded)
-    encoded = LeakyReLU(alpha=0.01)(encoded)
-    #bottleneck reduction
-    bottleneck= Dense(encoding_dim, name='bottleneck')(encoded)
-    #decoder side
-    decoded = Dense(1024)(bottleneck)
-    decoded = LeakyReLU(alpha=0.01)(decoded)
-    decoded = Dense(2048)(decoded)
-    decoded = LeakyReLU(alpha=0.01)(decoded)
-    output = Dense(input_dim, activation='linear')(decoded)
-    
-    clear_session()  # Clear Keras/TensorFlow session
-    #model compilation
-    autoencoder_model = Model(inputs=input_img, outputs=output)
-    autoencoder_model.summary()
-    autoencoder_model.compile(optimizer='adam', loss='mse')
+    with tf.device('/CPU:0'):
+        encoded = Dense(1024)(input_img) 
+        encoded = LeakyReLU(alpha=0.01)(encoded)
+        encoded = Dense(512)(encoded)
+        encoded = LeakyReLU(alpha=0.01)(encoded)
+        #bottleneck reduction
+        bottleneck= Dense(encoding_dim, name='bottleneck')(encoded)
+        #decoder side
+        decoded = Dense(512)(bottleneck)
+        decoded = LeakyReLU(alpha=0.01)(decoded)
+        decoded = Dense(1024)(decoded)
+        decoded = LeakyReLU(alpha=0.01)(decoded)
+        output = Dense(input_dim, activation='linear')(decoded)
+        
+        clear_session()  # Clear Keras/TensorFlow session
+        #model compilation
+        autoencoder_model = Model(inputs=input_img, outputs=output)
+        autoencoder_model.summary()
+        autoencoder_model.compile(optimizer='adam', loss='mse')
 
- 
-    # Define early stopping callback
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
-    print("autoencoder model fitting")
-    # Train the autoencoder with early stopping
-    history = autoencoder_model.fit(
-        x_train, x_train,  # Input and target are the same for autoencoders
-        epochs=100,
-        batch_size=16,
-        shuffle=True,
-        validation_data=(x_val, x_val),  # Validation data
-        callbacks=[early_stopping]
-    ) 
+    
+        # Define early stopping callback
+        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
+        print("autoencoder model fitting")
+        # Train the autoencoder with early stopping
+        history = autoencoder_model.fit(
+            x_train, x_train,  # Input and target are the same for autoencoders
+            epochs=100,
+            batch_size=16,
+            shuffle=True,
+            validation_data=(x_val, x_val),  # Validation data
+            callbacks=[early_stopping]
+        ) 
     
     # Plot the training and validation loss
     plt.plot(history.history['loss'], label='Training Loss')
@@ -78,7 +79,9 @@ def autoencoder_network(path_input):
     #plt.show()
     
     #return encoder_result(history,autoencoder_model)
+    print("saving model")
     autoencoder_model.save('autoencoder_model')
+    print("saved")
 
 
 

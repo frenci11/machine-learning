@@ -170,7 +170,7 @@ def input_preprocessing(img_paths):
     
     if(type(img_paths)is not list):
         raise TypeError("only string list allowed")
-   
+
     feature_vector=[]
     img = []
     original=[]
@@ -180,29 +180,28 @@ def input_preprocessing(img_paths):
         width, height = img.size
         
         if width <= height:
-            scale_factor = 224 / width
+            scale_factor = 112 / width
         else:
-            scale_factor = 224 / height
+            scale_factor = 112 / height
             
         new_width = int(width * scale_factor)+1
         new_height = int(height * scale_factor)+1
         img = img.resize((new_width, new_height))
         
-        left = (new_width - 224) // 2
-        top = (new_height - 224) // 2
-        right = left + 224
-        bottom = top + 224
+        left = (new_width - 112) // 2
+        top = (new_height - 112) // 2
+        right = left + 112
+        bottom = top + 112
         img = img.crop((left, top, right, bottom))
         
-        img = np.array(img)/255.0
-        
-        hls = np.apply_along_axis(lambda x: colorsys.rgb_to_hls(x[0], x[1], x[2]), 2, img)
-        hue = hls[:, :, 0]  # Extract the Hue channel
+        #img = np.array(img)/255.0
+        #hls = np.apply_along_axis(lambda x: colorsys.rgb_to_hls(x[0], x[1], x[2]), 2, img)
+        #hue = hls[:, :, 0]  # Extract the Hue channel
 
-        original.append(hue)
-        #img=np.array(hue)
+        original.append(img)
+        img=np.array(img)
 
-        img_array =hue.flatten()
+        img_array =img.flatten()
         feature_vector.append(img_array)
     print("preprocessing done")
     return results(feature_vector,original)
