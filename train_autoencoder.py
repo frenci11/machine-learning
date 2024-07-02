@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.layers import Input, Dense, LeakyReLU
+from tensorflow.keras.layers import Input, Dense, LeakyReLU, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.models import Model
 from tensorflow.keras.backend import clear_session
@@ -32,31 +32,45 @@ def autoencoder_network(path_input):
     input_dim = x_train.shape[1]
     encoding_dim = 512  # Number of features in the compressed representation
     
-    input_img = Input(shape=(input_dim,))
+    
     #encoder side
-    with tf.device('/CPU:0'):
-        encoded = Dense(1024)(input_img) 
-        encoded = LeakyReLU(alpha=0.01)(encoded)
-        encoded = Dense(512)(encoded)
-        encoded = LeakyReLU(alpha=0.01)(encoded)
-        #bottleneck reduction
-        bottleneck= Dense(encoding_dim, name='bottleneck')(encoded)
-        #decoder side
-        decoded = Dense(512)(bottleneck)
-        decoded = LeakyReLU(alpha=0.01)(decoded)
-        decoded = Dense(1024)(decoded)
-        decoded = LeakyReLU(alpha=0.01)(decoded)
-        output = Dense(input_dim, activation='linear')(decoded)
-        
-        clear_session()  # Clear Keras/TensorFlow session
-        #model compilation
-        autoencoder_model = Model(inputs=input_img, outputs=output)
-        autoencoder_model.summary()
+    with tf.device('/GPU:0'):
+        input_layer_encoder = Input(shape=(input_dim,))
+        hidden_enc = Dense(2048)(input_layer_encoder)
+        hidden_enc = LeakyReLU(alpha=0.01)(hidden_enc)
+        hidden_enc = Dropout(0.1)(hidden_enc)  # Add dropout
+        hidden_enc = Dense(1024)(hidden_enc)
+        encoded = LeakyReLU(alpha=0.01)(hidden_enc)
+
+        # Bottleneck
+        bottleneck = Dense(encoding_dim, name='bottleneck')(encoded)
+
+        # Decoder
+        input_layer_decoder = Input(shape=(encoding_dim,))
+        hidden_dec = Dense(1024)(input_layer_decoder)
+        hidden_dec = LeakyReLU(alpha=0.01)(hidden_dec)
+        hidden_dec = Dropout(0.02)(hidden_dec)  # Add dropout
+        hidden_dec = Dense(2048)(hidden_dec)
+        hidden_dec = LeakyReLU(alpha=0.01)(hidden_dec)
+        decoded = Dense(input_dim, activation='linear')(hidden_dec)
+
+        # Define models
+        encoder = Model(inputs=input_layer_encoder, outputs=bottleneck, name='encoder')
+        encoder.summary()
+        decoder = Model(inputs=input_layer_decoder, outputs=decoded, name='decoder')
+        decoder.summary()
+
+        # Autoencoder
+        autoencoder_output = decoder(encoder(input_layer_encoder))
+        autoencoder_model = Model(inputs=input_layer_encoder, outputs=autoencoder_output, name='autoencoder')
+
+        # Compile the autoencoder model
         autoencoder_model.compile(optimizer='adam', loss='mse')
+        autoencoder_model.summary()
 
     
         # Define early stopping callback
-        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True, verbose=1)
         print("autoencoder model fitting")
         # Train the autoencoder with early stopping
         history = autoencoder_model.fit(
