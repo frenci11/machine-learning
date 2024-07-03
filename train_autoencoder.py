@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 from PIL import Image
 import matplotlib.pyplot as plt
 import sys
-import json
 from collections import namedtuple
 from utilities import input_preprocessing
 
