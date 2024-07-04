@@ -1,20 +1,19 @@
+
+#this file contains the autoencoder network model, and training
+#it is called as a separate subprocess
+
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.layers import Input, Dense, LeakyReLU, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.models import Model
-from tensorflow.keras.backend import clear_session
 from sklearn.model_selection import train_test_split
-from PIL import Image
 import matplotlib.pyplot as plt
 import sys
-from collections import namedtuple
 from utilities import input_preprocessing
 
 def autoencoder_network(path_input):
     print("subprocess called\n")
-
-    encoder_result= namedtuple('encoder_result',['hystory', 'autoencoder_model'])
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     
     #input preprocessing
@@ -29,15 +28,16 @@ def autoencoder_network(path_input):
     
     # Define the autoencoder architecture
     input_dim = x_train.shape[1]
-    encoding_dim = 512  # Number of features in the compressed representation
+    encoding_dim = 256  # Number of features in the compressed representation
     
     
-    #encoder side
+    #encoder side, change to /CPU:0 for execution on CPU
     with tf.device('/GPU:0'):
+        #encoder
         input_layer_encoder = Input(shape=(input_dim,))
         hidden_enc = Dense(2048)(input_layer_encoder)
         hidden_enc = LeakyReLU(alpha=0.01)(hidden_enc)
-        hidden_enc = Dropout(0.1)(hidden_enc)  # Add dropout
+        hidden_enc = Dropout(0.01)(hidden_enc)  # Add dropout
         hidden_enc = Dense(1024)(hidden_enc)
         encoded = LeakyReLU(alpha=0.01)(hidden_enc)
 
@@ -59,7 +59,7 @@ def autoencoder_network(path_input):
         decoder = Model(inputs=input_layer_decoder, outputs=decoded, name='decoder')
         decoder.summary()
 
-        # Autoencoder
+        # Autoencoder (encoder+decoder)
         autoencoder_output = decoder(encoder(input_layer_encoder))
         autoencoder_model = Model(inputs=input_layer_encoder, outputs=autoencoder_output, name='autoencoder')
 
@@ -89,7 +89,6 @@ def autoencoder_network(path_input):
     plt.ylabel('Loss')
     plt.legend()
     plt.savefig('autoencoder_val_loss.png')
-    #plt.show()
     
     #return encoder_result(history,autoencoder_model)
     print("saving model")
@@ -97,7 +96,7 @@ def autoencoder_network(path_input):
     print("saved")
 
 
-
+#if the caller is the main process, retrieve arguments and call the function
 if __name__ == '__main__':
     img_paths = sys.argv[1:]
     autoencoder_network(img_paths)

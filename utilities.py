@@ -1,4 +1,10 @@
 
+#this file contains some utilities functions used in the main code
+#such as path discovery for the train/evaluation images
+#VGG16 feature extraction
+#input preprocessing for the autoencoder
+
+
 import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
@@ -10,21 +16,12 @@ from collections import namedtuple
 from sklearn.decomposition import PCA
 import os
 
-
-import tensorflow as tf
-from keras.layers import Input, Dense
-from keras.callbacks import EarlyStopping
-from sklearn.model_selection import train_test_split
-
-from tensorflow.keras.backend import clear_session
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import Input, Dense, LeakyReLU
-from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.models import Model
 
 import colorsys
 #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-# Function to visualize features
+# Function to extract features with VGG16
 def VGG16_features(img_path, model, layer_name,visualize):
     
     img = Image.open(img_path).convert('RGB')
@@ -46,7 +43,6 @@ def VGG16_features(img_path, model, layer_name,visualize):
     
     img = img.crop((left, top, right, bottom))
 
-    #img = image.load_img(img_path, target_size=(224, 224))
     img_data = image.image_utils.img_to_array(img)
     img_data = np.expand_dims(img_data, axis=0)
     img_data = preprocess_input(img_data)

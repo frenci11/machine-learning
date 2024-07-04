@@ -1,6 +1,6 @@
-()for image feature extraction, VGG16 convnet is used
-()the fc2 layer is selected as output layer, so the network is truncated before the last layer
-()the network outputs 4096 feature for every image
-()the feature are then reduced with PCA to the 90% variance explained, so the vector numbers is not constant
-()the feature are then passed to TSNE for 2D visualization
-()the PCA feature are passed to Kmeans for training and clustering with 9 clusters.
+
+
+(1)VGG16 model from keras is required, so install tensorflow
+(2)autoencoder model is pretty heavy on the gpu, so if crashes, execute it on the cpu (instructions are on the code comments)
+(3)after autoencoder subprocess starts, it cannot output to the STDOUT stream untill it finished, and the output is captured
+in general it should take less than 10 min on CPU and less than 3 min on GPU
